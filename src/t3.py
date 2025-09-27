@@ -1,33 +1,41 @@
+#!/usr/bin/env python3
 import argparse
 import csv
+import os
 import re
 import time
 from urllib.parse import urlparse
 
-import dotenv
 import requests
+from dotenv import load_dotenv
 
 HEX_RE = re.compile(r"#(?:[0-9A-Fa-f]{6})")
 
+# --- Load .env ---
+load_dotenv()
+GITHUB_TOKEN = os.getenv("GITHUB_TOKEN")
+HEADERS = {"Authorization": f"token {GITHUB_TOKEN}"} if GITHUB_TOKEN else {}
+if not GITHUB_TOKEN:
+    print(
+        "⚠️  No GITHUB_TOKEN found in environment. Using unauthenticated mode (60 req/hr)."
+    )
+
 
 def is_github_repo_url(url):
-    """Check if the URL looks like github.com/owner/repo"""
     u = urlparse(url)
     parts = [p for p in u.path.split("/") if p]
     return u.netloc == "github.com" and len(parts) == 2
 
 
 def get_repo_tree(owner, repo):
-    """Fetch GitHub repo tree for HEAD"""
     api = f"https://api.github.com/repos/{owner}/{repo}/git/trees/HEAD?recursive=1"
-    r = requests.get(api, timeout=20)
+    r = requests.get(api, headers=HEADERS, timeout=20)
     if r.status_code != 200:
         return None, f"API error {r.status_code}"
     return r.json().get("tree", []), None
 
 
 def fetch_raw_file(owner, repo, path):
-    """Fetch raw file text from GitHub repo"""
     raw_url = f"https://raw.githubusercontent.com/{owner}/{repo}/HEAD/{path}"
     r = requests.get(raw_url, timeout=20)
     if r.status_code == 200:
@@ -36,7 +44,6 @@ def fetch_raw_file(owner, repo, path):
 
 
 def extract_colors_from_text(text):
-    """Find hex colors in file text"""
     hexes = set(HEX_RE.findall(text))
     for m in re.findall(r"0x([0-9A-Fa-f]{6})", text):
         hexes.add("#" + m)
@@ -44,7 +51,6 @@ def extract_colors_from_text(text):
 
 
 def repo_extract_colors(owner, repo):
-    """Scan repo for theme files and extract colors"""
     tree, err = get_repo_tree(owner, repo)
     if tree is None:
         return [], err
@@ -91,7 +97,6 @@ def main():
             print(f"{name}: {url} -> {status}, {len(colors)} colors found")
             time.sleep(0.5)
 
-    # save results
     with open(args.out, "w", encoding="utf-8", newline="") as f:
         writer = csv.writer(f, delimiter="\t")
         writer.writerow(["name", "url", "status", "colors"])
