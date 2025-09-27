@@ -137,7 +137,7 @@ iterm_summary <- pair_dat %>%
   summarise(mean_sim = mean(sim, na.rm = TRUE), .groups = "drop") %>%
   arrange(mean_sim)
 
-best_pairs  <- pair_dat %>% arrange(desc(sim)) %>% head(10)
+best_pairs  <- pair_dat %>% arrange(desc(sim)) %>% head(20)
 worst_pairs <- pair_dat %>% arrange(sim) %>% head(10)
 
 # ---- helper to color numeric column 0..1 ----
@@ -179,7 +179,7 @@ top10_iterm <- iterm_summary %>% tail(10) %>%
 
 best_pairs_tbl <- best_pairs %>%
   gt() %>%
-  tab_header(title = md("**Top 10 Best Matches (Neovim ↔ iTerm)**")) %>%
+  tab_header(title = md("**Top 20 Best Matches (Neovim ↔ iTerm)**")) %>%
   cols_label(iterm_name = "iTerm Theme", nvim_name = "Neovim Theme", sim = "Similarity") %>%
   colorize("sim")
 
@@ -196,4 +196,48 @@ bottom10_iterm
 top10_iterm
 best_pairs_tbl
 worst_pairs_tbl
+```
+
+```{r}
+library(dplyr)
+library(readr)
+library(gt)
+library(scales)
+
+# Load Top 50 TSV
+af <- "../data/end/top50_filtered.tsv"
+dat <- read_tsv(af, show_col_types = FALSE)
+
+tab <- dat %>%
+  arrange(desc(similarity_index_lab)) %>%
+  mutate(
+    similarity_index_lab = round(similarity_index_lab, 3),
+    nvim_url = ifelse(!is.na(nvim_url),
+                      paste0("[link](", nvim_url, ")"),
+                      NA)
+  ) %>%
+  gt() %>%
+  tab_header(
+    title = md("**Top 50 Non-Obvious Matches (iTerm ↔ Neovim)**")
+  ) %>%
+  cols_label(
+    iterm_name = "iTerm Theme",
+    nvim_name = "Neovim Theme",
+    nvim_url  = "Neovim Repo",
+    similarity_index_lab = "Similarity"
+  ) %>%
+  fmt_number(
+    columns = similarity_index_lab,
+    decimals = 3
+  ) %>%
+  text_transform(
+    locations = cells_body(columns = nvim_url),
+    fn = function(x) lapply(x, md)
+  ) %>%
+  tab_options(
+    table.font.size = px(12),
+    heading.align = "left"
+  )
+
+tab
 ```

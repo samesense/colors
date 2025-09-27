@@ -33,13 +33,17 @@ def main():
         "--tsv", required=True, help="comparison_results.tsv with similarity_index_lab"
     )
     ap.add_argument(
+        "--nvim_csv",
+        required=True,
+        help="CSV file with Neovim theme metadata (columns: name,url)",
+    )
+    ap.add_argument(
         "--out", default="../data/end/top50_filtered.tsv", help="Output TSV file"
     )
     args = ap.parse_args()
 
-    # Load data
+    # Load comparison results
     df = pd.read_csv(args.tsv, sep="\t")
-
     if "similarity_index_lab" not in df.columns:
         raise ValueError("TSV must contain a 'similarity_index_lab' column")
 
@@ -54,13 +58,25 @@ def main():
     )
     filtered = df[~mask].copy()
 
-    crit = filtered.apply(
-        lambda row: row["nvim_name"] in ("theme.nvim", "nvim"), axis=1
-    )
+    # Remove generic placeholder nvim names
+    crit = filtered["nvim_name"].isin(["theme.nvim", "nvim"])
     filtered = filtered[~crit]
 
+    # Load Neovim metadata (name,url)
+    nvim_meta = pd.read_csv(args.nvim_csv)
+    # standardize column names if needed
+    if "name" not in nvim_meta.columns or "url" not in nvim_meta.columns:
+        raise ValueError("Neovim CSV must have columns: name,url")
+
+    # Merge to add URL column
+    merged = filtered.merge(
+        nvim_meta.rename(columns={"name": "nvim_name", "url": "nvim_url"}),
+        on="nvim_name",
+        how="left",
+    )
+
     # Sort by similarity, take top 50
-    top50 = filtered.sort_values("similarity_index_lab", ascending=False).head(50)
+    top50 = merged.sort_values("similarity_index_lab", ascending=False).head(50)
 
     # Save to TSV
     top50.to_csv(args.out, sep="\t", index=False)
@@ -68,9 +84,9 @@ def main():
 
     # Print preview
     print(
-        top50[["iterm_name", "nvim_name", "similarity_index_lab"]].to_string(
-            index=False
-        )
+        top50[
+            ["iterm_name", "nvim_name", "nvim_url", "similarity_index_lab"]
+        ].to_string(index=False)
     )
 
 
