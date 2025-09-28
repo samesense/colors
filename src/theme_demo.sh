@@ -2,6 +2,8 @@
 
 theme_name="${1:-TEST THEME}"
 
+clear
+
 echo
 echo "========================================="
 printf " iTerm Theme Demo for: \033[1m%s\033[0m\n" "$theme_name"

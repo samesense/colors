@@ -46,7 +46,7 @@ def reload_ghostty(title="ThemeDemo"):
     script = f"""
     tell application "Ghostty" to activate
     tell application "System Events"
-        keystroke "echo -ne \\"\\\\033]0;{title}\\\\007\\""
+        keystroke "tmux attach -t default || tmux new -s default"
         key code 36 -- Return
     end tell
     """
@@ -153,15 +153,19 @@ def run_command_in_ghostty(cmd: str):
     subprocess.run(["osascript", "-e", script])
 
 
-def run_demo_in_ghostty(theme_name: str):
-    script = f"""
-    tell application "Ghostty" to activate
-    tell application "System Events"
-        keystroke "bash ~/projects/colors/src/theme_demo.sh {theme_name}"
-        key code 36 -- Return
-    end tell
-    """
-    subprocess.run(["osascript", "-e", script])
+def run_demo_in_ghostty(theme: str):
+    cmd = f'tmux send-keys -t default "bash ~/projects/colors/src/theme_demo.sh \\"{theme}\\"" C-m'
+    subprocess.run(cmd, shell=True, check=True)
+    print(f"▶️ Ran demo for {theme} inside tmux")
+
+    # script = f"""
+    # tell application "Ghostty" to activate
+    # tell application "System Events"
+    #     keystroke "bash ~/projects/colors/src/theme_demo.sh {theme_name}"
+    #     key code 36 -- Return
+    # end tell
+    # """
+    # subprocess.run(["osascript", "-e", script])
 
 
 def resize_ghostty(width=1000, height=1100):
