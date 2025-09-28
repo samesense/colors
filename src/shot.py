@@ -23,7 +23,7 @@ def ensure_tmux_demo(nvim_theme):
     subprocess.run("tmux kill-session -t demo 2>/dev/null", shell=True, env=env)
 
     subprocess.run(["tmux", "new-session", "-d", "-s", "demo"], env=env)
-    subprocess.run(["tmux", "split-window", "-v", "-p", "70", "-t", "demo"], env=env)
+    subprocess.run(["tmux", "split-window", "-v", "-p", "50", "-t", "demo"], env=env)
 
     demo_file = "~/projects/colors/src/shot.py"
     subprocess.run(
@@ -37,6 +37,22 @@ def ensure_tmux_demo(nvim_theme):
         ],
         env=env,
     )
+
+
+def set_ghostty_font(size=22):
+    cfg = CONFIG_PATH.read_text().splitlines()
+    new_cfg = []
+    replaced = False
+    for line in cfg:
+        if line.strip().startswith("font-size"):
+            new_cfg.append(f"font-size = {size}")
+            replaced = True
+        else:
+            new_cfg.append(line)
+    if not replaced:
+        new_cfg.append(f"font-size = {size}")
+    CONFIG_PATH.write_text("\n".join(new_cfg) + "\n")
+    print(f"🔠 Set Ghostty font size = {size}")
 
 
 def write_theme(new_theme: str):
@@ -206,7 +222,7 @@ def run_demo_in_ghostty(theme: str, nvim_theme: str):
     # subprocess.run(["osascript", "-e", script])
 
 
-def resize_ghostty(width=1000, height=1500):
+def resize_ghostty(width=1440, height=2560):
     script = f"""
     tell application "System Events"
         tell application process "Ghostty"
@@ -225,6 +241,7 @@ def cycle_themes(theme_dict, outdir: str, delay=1.0):
             ensure_tmux_demo(nvim_theme)
             print("=== Theme:", iterm_theme)
             write_theme(iterm_theme)
+            set_ghostty_font(size=20)
             reload_ghostty()
             # wait for UI to settle (rendering, window appear)
             time.sleep(delay + 0.5)
@@ -257,12 +274,27 @@ if __name__ == "__main__":
             row["iterm_name"] == "One Half Light" and row["nvim_name"] == "onehalf"
         )
         or (row["iterm_name"] == "One Half Dark" and row["nvim_name"] == "onehalf")
-        or (row["iterm_name"] == "Snazzy_Soft" and row["nvim_name"] == "camila")
-        or (row["iterm_name"] == "Rose_Pine_Moon" and row["nvim_name"] == "sakura")
+        or (row["iterm_name"] == "Snazzy Soft" and row["nvim_name"] == "camila")
+        or (row["iterm_name"] == "Rose Pine Moon" and row["nvim_name"] == "Sakura.nvim")
+        or (row["iterm_name"] == "CGA" and row["nvim_name"] == "templeos.nvim")
         or (
-            row["iterm_name"] == "TokyoNight_Storm" and row["nvim_name"] == "kyotonight"
+            row["iterm_name"] == "Gruvbox Dark Hard"
+            and row["nvim_name"] == "gruvsquirrel.nvim"
         )
-        or (row["iterm_name"] == "TokyoNight" and row["nvim_name"] == "kyotonight"),
+        or (
+            row["iterm_name"] == "Challenger Deep"
+            and row["nvim_name"] == "embark-lua.nvim"
+        )
+        or (row["iterm_name"] == "Tomorrow Night" and row["nvim_name"] == "hybrid.nvim")
+        or (
+            row["iterm_name"] == "TokyoNight Storm"
+            and row["nvim_name"] == "kyotonight.vim"
+        )
+        or (
+            row["iterm_name"] == "TokyoNight Night"
+            and row["nvim_name"] == "kyotonight.vim"
+        )
+        or (row["iterm_name"] == "TokyoNight" and row["nvim_name"] == "kyotonight.vim"),
         axis=1,
     )
     df = df[~crit]
