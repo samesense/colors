@@ -14,6 +14,20 @@ CONFIG_PATH = Path.home() / ".config" / "ghostty" / "config"
 GHOSTTY_APP = "/Applications/Ghostty.app"
 
 
+def ensure_tmux_intro():
+    """Recreate tmux:intro with just one shell pane (no nvim)."""
+    env = dict(**os.environ)
+    env.pop("TMUX", None)  # avoid nesting issues
+
+    # Kill any existing intro session
+    subprocess.run("tmux kill-session -t intro 2>/dev/null", shell=True, env=env)
+
+    # New session with a single pane
+    subprocess.run(["tmux", "new-session", "-d", "-s", "intro"], env=env)
+
+    print("✅ Created tmux:intro with single shell pane")
+
+
 def ensure_tmux_demo(nvim_theme):
     """Setup tmux and nvim. ex rusty"""
     env = dict(**os.environ)
@@ -79,7 +93,7 @@ def write_theme(new_theme: str):
 # (Not guaranteed to exist)
 
 
-def reload_ghostty(title="ThemeDemo"):
+def reload_ghostty(session, title="ThemeDemo"):
     """Kill and restart Ghostty, then set the window title."""
     # Kill existing Ghostty
     subprocess.run(["pkill", "-f", "Ghostty"])
@@ -93,7 +107,7 @@ def reload_ghostty(title="ThemeDemo"):
     script = f"""
     tell application "Ghostty" to activate
     tell application "System Events"
-        keystroke "tmux attach -t demo || tmux new -s demo"
+        keystroke "tmux attach -t {session} || tmux new -s {session}"
         key code 36 -- Return
     end tell
     """
@@ -201,7 +215,8 @@ def run_command_in_ghostty(cmd: str):
 
 
 def run_demo_in_ghostty(theme: str, nvim_theme: str):
-    cmd = f'tmux send-keys -t demo "bash ~/projects/colors/src/theme_demo.sh \\"{theme}\\" \\"{nvim_theme}\\"" C-m'
+    cmd = f'tmux send-keys -t demo "~/projects/colors/.venv/bin/python ~/projects/colors/src/theme_demo.py \\"{theme}\\" \\"{nvim_theme}\\"" C-m'
+    # cmd = f'tmux send-keys -t demo "bash ~/projects/colors/src/theme_demo.sh \\"{theme}\\" \\"{nvim_theme}\\"" C-m'
     # cmd = (
     #     f'tmux send-keys -t demo:0.0 "bash ~/projects/theme_demo.sh \\"{theme}\\"" C-m'
     # )
@@ -233,6 +248,30 @@ def resize_ghostty(width=1080, height=1920):
     subprocess.run(["osascript", "-e", script])
 
 
+def run_intro_message(delay=2.0):
+    """Intro screen: Top 10 Nvim / Terminal Theme Combos."""
+    ensure_tmux_intro()
+    reload_ghostty("intro")
+    time.sleep(delay + 0.5)
+
+    resize_ghostty()
+    time.sleep(delay + 0.1)
+
+    # Print centered intro message in bottom pane (demo.1)
+    cmd = (
+        "tmux send-keys -t intro.1 "
+        "'clear && "
+        'printf "\\n\\n\\n\\n\\n" && '
+        'figlet -c -f big "Top 10 Nvim / Terminal Theme Combos" | lolcat\' C-m'
+    )
+    subprocess.run(cmd, shell=True, check=True)
+    print("🎬 Printed intro message")
+
+    time.sleep(delay + 0.5)
+    screenshot_ghostty("../data/interim/screenshots/aa.png")
+    time.sleep(delay + 0.5)
+
+
 def run_final_message():
     """Print final figlet+lolcat message in the demo session."""
     subprocess.run("tmux resize-pane -Z -t demo.2", shell=True, check=True)
@@ -240,7 +279,7 @@ def run_final_message():
         "tmux send-keys -t demo.2 "
         "'clear && "
         'printf "\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n" && '
-        'figlet -c -f big "Like for 10 more combo recs" | lolcat\' C-m'
+        'figlet -c -f big "Like for 10 more theme combo recs" | lolcat\' C-m'
     )
     # cmd = "tmux send-keys -t demo.2 'clear && figlet -c -f big \"Like for 10 more combo recs\" | lolcat' C-m"
     subprocess.run(cmd, shell=True, check=True)
@@ -250,13 +289,14 @@ def run_final_message():
 def cycle_themes(theme_dict, outdir: str, delay=1.0):
     outdir = Path(outdir)
     outdir.mkdir(parents=True, exist_ok=True)
+    run_intro_message()
     for iterm_theme in theme_dict:
         for nvim_theme in theme_dict[iterm_theme]:
             ensure_tmux_demo(nvim_theme)
             print("=== Theme:", iterm_theme)
             write_theme(iterm_theme)
             set_ghostty_font(size=20)
-            reload_ghostty()
+            reload_ghostty("demo")
             # wait for UI to settle (rendering, window appear)
             time.sleep(delay + 0.5)
             # run_command_in_ghostty(f'bash ~/projects/colors/src/theme_demo.sh "{theme}"')
@@ -271,7 +311,6 @@ def cycle_themes(theme_dict, outdir: str, delay=1.0):
                 Path("../data/interim/screenshots") / f"{tname}__{n_name}.png"
             )
             time.sleep(delay + 0.5)
-        break
     run_final_message()
     time.sleep(2)
     screenshot_ghostty(Path("../data/interim/screenshots") / "zz.png")
