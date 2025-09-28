@@ -50,3 +50,9 @@ for fg in 30 31 32 33 34 35 36 37; do
   done
   echo
 done
+
+echo
+echo "=== Diff Colors ==="
+printf "\033[32m+ Added line\033[0m\n"
+printf "\033[31m- Removed line\033[0m\n"
+printf "\033[33m~ Modified line\033[0m\n"

@@ -222,7 +222,7 @@ def run_demo_in_ghostty(theme: str, nvim_theme: str):
     # subprocess.run(["osascript", "-e", script])
 
 
-def resize_ghostty(width=1440, height=2560):
+def resize_ghostty(width=1080, height=1920):
     script = f"""
     tell application "System Events"
         tell application process "Ghostty"
@@ -306,11 +306,4 @@ if __name__ == "__main__":
     for _, row in df.iterrows():
         iterm_to_nvim[row["iterm_name"]][row["colorscheme_name"]] = row["nvim_url"]
 
-    # my_themes = [
-    #     "Catppuccin Mocha",
-    #     "Tomorrow Night Blue",
-    #     "Everblush",
-    #     "Snazzy Soft",
-    #     # ... 48 more
-    # ]
     cycle_themes(iterm_to_nvim, outdir="../data/interim/screenshots", delay=2.0)
