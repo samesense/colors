@@ -311,6 +311,7 @@ def cycle_themes(theme_dict, outdir: str, delay=1.0):
                 Path("../data/interim/screenshots") / f"{tname}__{n_name}.png"
             )
             time.sleep(delay + 0.5)
+        break
     run_final_message()
     time.sleep(2)
     screenshot_ghostty(Path("../data/interim/screenshots") / "zz.png")
