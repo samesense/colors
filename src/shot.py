@@ -1,3 +1,4 @@
+import os
 import re
 import shlex
 import subprocess
@@ -6,6 +7,25 @@ from pathlib import Path
 
 CONFIG_PATH = Path.home() / ".config" / "ghostty" / "config"
 GHOSTTY_APP = "/Applications/Ghostty.app"  # adjust if installed elsewhere
+
+
+def ensure_tmux_demo():
+    """Recreate tmux:demo with exactly 2 vertical panes (top nvim 40%, bottom shell 60%)."""
+    env = dict(**os.environ)
+    env.pop("TMUX", None)  # avoid nesting issues
+
+    # Kill any existing session
+    subprocess.run("tmux kill-session -t demo 2>/dev/null", shell=True, env=env)
+
+    # New session (will become bottom shell after split)
+    subprocess.run(["tmux", "new-session", "-d", "-s", "demo"], env=env)
+
+    # Split vertically: create new pane ABOVE (-v), 40% of window height
+    subprocess.run(["tmux", "split-window", "-v", "-p", "70", "-t", "demo"], env=env)
+
+    # Now top is pane .0, bottom is pane .1
+    # Launch nvim in the top pane
+    subprocess.run(["tmux", "send-keys", "-t", "demo:.1", "nvim", "C-m"], env=env)
 
 
 def write_theme(new_theme: str):
@@ -46,7 +66,7 @@ def reload_ghostty(title="ThemeDemo"):
     script = f"""
     tell application "Ghostty" to activate
     tell application "System Events"
-        keystroke "tmux attach -t default || tmux new -s default"
+        keystroke "tmux attach -t demo || tmux new -s demo"
         key code 36 -- Return
     end tell
     """
@@ -154,9 +174,16 @@ def run_command_in_ghostty(cmd: str):
 
 
 def run_demo_in_ghostty(theme: str):
-    cmd = f'tmux send-keys -t default "bash ~/projects/colors/src/theme_demo.sh \\"{theme}\\"" C-m'
+    cmd = f'tmux send-keys -t demo "bash ~/projects/colors/src/theme_demo.sh \\"{theme}\\"" C-m'
+    # cmd = (
+    #     f'tmux send-keys -t demo:0.0 "bash ~/projects/theme_demo.sh \\"{theme}\\"" C-m'
+    # )
     subprocess.run(cmd, shell=True, check=True)
-    print(f"▶️ Ran demo for {theme} inside tmux")
+    print(f"▶️ Ran demo for {theme} in tmux:demo left pane")
+
+    # cmd = f'tmux send-keys -t demo "bash ~/projects/colors/src/theme_demo.sh \\"{theme}\\"" C-m'
+    # subprocess.run(cmd, shell=True, check=True)
+    # print(f"▶️ Ran demo for {theme} inside tmux")
 
     # script = f"""
     # tell application "Ghostty" to activate
@@ -168,7 +195,7 @@ def run_demo_in_ghostty(theme: str):
     # subprocess.run(["osascript", "-e", script])
 
 
-def resize_ghostty(width=1000, height=1100):
+def resize_ghostty(width=1000, height=1500):
     script = f"""
     tell application "System Events"
         tell application process "Ghostty"
@@ -183,6 +210,7 @@ def cycle_themes(theme_list, outdir: str, delay=1.0):
     outdir = Path(outdir)
     outdir.mkdir(parents=True, exist_ok=True)
     for theme in theme_list:
+        ensure_tmux_demo()
         print("=== Theme:", theme)
         write_theme(theme)
         reload_ghostty()
