@@ -22,14 +22,35 @@ def write_theme(new_theme: str):
     print(f"Set theme in config to: {new_theme}")
 
 
-def reload_ghostty():
-    """Attempt to reload Ghostty so config changes take effect."""
-    # Option A: kill & restart (brutal but straightforward)
+# def reload_ghostty():
+#     """Attempt to reload Ghostty so config changes take effect."""
+#     # Option A: kill & restart (brutal but straightforward)
+#     subprocess.run(["pkill", "-f", "Ghostty"])
+#     time.sleep(1)
+#     subprocess.run(["open", "-a", "Ghostty", "--args", "--title", '"ThemeDemo"'])
+# Option B: send a “reload config” keypress or AppleScript, if Ghostty supports that
+# (Not guaranteed to exist)
+
+
+def reload_ghostty(title="ThemeDemo"):
+    """Kill and restart Ghostty, then set the window title."""
+    # Kill existing Ghostty
     subprocess.run(["pkill", "-f", "Ghostty"])
     time.sleep(1)
+
+    # Launch fresh Ghostty
     subprocess.run(["open", "-a", "Ghostty"])
-    # Option B: send a “reload config” keypress or AppleScript, if Ghostty supports that
-    # (Not guaranteed to exist)
+    time.sleep(1)
+
+    # Set window title using ANSI escape sequence
+    script = f"""
+    tell application "Ghostty" to activate
+    tell application "System Events"
+        keystroke "echo -ne \\"\\\\033]0;{title}\\\\007\\""
+        key code 36 -- Return
+    end tell
+    """
+    subprocess.run(["osascript", "-e", script])
 
 
 def get_ghostty_window_id() -> str:
@@ -52,6 +73,70 @@ def take_screenshot(theme_name: str, outdir: Path):
     # -x = capture frontmost window
     subprocess.run(["screencapture", "-x", str(fname)])
     print(f"Saved screenshot for {theme_name}")
+
+
+# def screenshot_ghostty(outfile: Path):
+#     # bring Ghostty to the front
+#     subprocess.run(["osascript", "-e", 'tell application "Ghostty" to activate'])
+#     # take a screenshot of the *frontmost window*
+#     subprocess.run(["screencapture", "-x", str(outfile)])
+#     print(f"✅ Saved screenshot: {outfile}")
+
+
+def screenshot_ghostty(outfile: Path):
+    cmd = "yabai -m query --windows | jq -r '.[] | select(.app==\"Ghostty\") | .id' | head -n 1"
+    result = subprocess.run(cmd, shell=True, capture_output=True, text=True)
+    win_id = result.stdout.strip()
+
+    if not win_id:
+        raise RuntimeError("⚠️ No Ghostty window found")
+
+    subprocess.run(["screencapture", f"-l{win_id}", str(outfile)], check=True)
+    print(f"✅ Saved screenshot: {outfile}")
+
+
+# def screenshot_ghostty(outfile: Path, title="ThemeDemo"):
+#     # Get Ghostty window ID via yabai + jq
+#     cmd = f'yabai -m query --windows | jq -r \'.[] | select(.app=="Ghostty" and .title=="{title}") | .id\''
+#     result = subprocess.run(cmd, shell=True, capture_output=True, text=True)
+#     win_id = result.stdout.strip()
+#
+#     if not win_id or win_id == "null":
+#         raise RuntimeError(
+#             "⚠️ Could not find Ghostty window ID. Is it running with --title set?"
+#         )
+#
+#     # Take screenshot of that window only
+#     subprocess.run(["screencapture", f"-l{win_id}", str(outfile)], check=True)
+#
+#     print(f"✅ Saved screenshot to {outfile}")
+
+
+# def screenshot_ghostty(outfile: Path):
+#     script = """
+#     tell application "System Events"
+#         if exists (process "Ghostty") then
+#             tell process "Ghostty"
+#                 if exists (front window) then
+#                     set winBounds to bounds of front window
+#                     return winBounds
+#                 end if
+#             end tell
+#         end if
+#     end tell
+#     return "ERROR"
+#     """
+#     result = subprocess.run(["osascript", "-e", script], capture_output=True, text=True)
+#     bounds_str = result.stdout.strip()
+#     if bounds_str == "ERROR" or not bounds_str:
+#         print("⚠️ Could not get Ghostty window bounds, falling back to full screen.")
+#         subprocess.run(["screencapture", str(outfile)])
+#         return
+#
+#     # Parse coordinates into x,y,w,h
+#     x, y, w, h = map(int, bounds_str.split(", "))
+#     subprocess.run(["screencapture", "-R", f"{x},{y},{w},{h}", str(outfile)])
+#     print(f"✅ Saved screenshot: {outfile}")
 
 
 def run_command_in_ghostty(cmd: str):
@@ -105,7 +190,9 @@ def cycle_themes(theme_list, outdir: str, delay=1.0):
         time.sleep(delay + 0.1)
         run_demo_in_ghostty(theme)
         time.sleep(delay + 0.5)
-        take_screenshot(theme, outdir)
+        tname = theme.replace(" ", "_").replace("/", "_")
+        screenshot_ghostty(Path("../data/interim/screenshots") / f"{tname}.png")
+        # take_screenshot(theme, outdir)
         time.sleep(delay + 0.5)
 
 
