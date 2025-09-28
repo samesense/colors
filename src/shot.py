@@ -262,7 +262,7 @@ def run_intro_message(delay=2.0):
         "tmux send-keys -t intro.1 "
         "'clear && "
         'printf "\\n\\n\\n\\n\\n" && '
-        'figlet -c -f big "Top 10 Nvim / Terminal Theme Combos" | lolcat\' C-m'
+        'figlet -c -f banner "Top 10 Nvim / Terminal Theme Combos" \' C-m'
     )
     subprocess.run(cmd, shell=True, check=True)
     print("🎬 Printed intro message")
@@ -279,7 +279,7 @@ def run_final_message():
         "tmux send-keys -t demo.2 "
         "'clear && "
         'printf "\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n" && '
-        'figlet -c -f big "Like for 10 more theme combo recs" | lolcat\' C-m'
+        'figlet -c -f big "Like for 10 more theme combo recs" \' C-m'
     )
     # cmd = "tmux send-keys -t demo.2 'clear && figlet -c -f big \"Like for 10 more combo recs\" | lolcat' C-m"
     subprocess.run(cmd, shell=True, check=True)
@@ -311,7 +311,6 @@ def cycle_themes(theme_dict, outdir: str, delay=1.0):
                 Path("../data/interim/screenshots") / f"{tname}__{n_name}.png"
             )
             time.sleep(delay + 0.5)
-        break
     run_final_message()
     time.sleep(2)
     screenshot_ghostty(Path("../data/interim/screenshots") / "zz.png")
