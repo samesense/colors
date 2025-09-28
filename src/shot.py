@@ -1,33 +1,30 @@
+"""Automate screenshots."""
+
 import os
 import re
 import shlex
 import subprocess
 import time
+from collections import defaultdict
 from pathlib import Path
 
+import pandas as pd
+
 CONFIG_PATH = Path.home() / ".config" / "ghostty" / "config"
-GHOSTTY_APP = "/Applications/Ghostty.app"  # adjust if installed elsewhere
+GHOSTTY_APP = "/Applications/Ghostty.app"
 
 
-def ensure_tmux_demo():
-    """Recreate tmux:demo with exactly 2 vertical panes (top nvim 40%, bottom shell 60%)."""
+def ensure_tmux_demo(nvim_theme):
+    """Setup tmux and nvim. ex rusty"""
     env = dict(**os.environ)
     env.pop("TMUX", None)  # avoid nesting issues
 
     # Kill any existing session
     subprocess.run("tmux kill-session -t demo 2>/dev/null", shell=True, env=env)
 
-    # New session (will become bottom shell after split)
     subprocess.run(["tmux", "new-session", "-d", "-s", "demo"], env=env)
-
-    # Split vertically: create new pane ABOVE (-v), 40% of window height
     subprocess.run(["tmux", "split-window", "-v", "-p", "70", "-t", "demo"], env=env)
 
-    # Now top is pane .0, bottom is pane .1
-    # Launch nvim in the top pane
-    # subprocess.run(["tmux", "send-keys", "-t", "demo:.1", "nvim", "C-m"], env=env)
-
-    theme = "rusty"
     demo_file = "~/projects/colors/src/shot.py"
     subprocess.run(
         [
@@ -35,7 +32,7 @@ def ensure_tmux_demo():
             "send-keys",
             "-t",
             "demo:.1",
-            f"NVIM_THEME='{theme}' nvim {demo_file}",
+            f"NVIM_THEME='{nvim_theme}' nvim {demo_file}",
             "C-m",
         ],
         env=env,
@@ -187,8 +184,8 @@ def run_command_in_ghostty(cmd: str):
     subprocess.run(["osascript", "-e", script])
 
 
-def run_demo_in_ghostty(theme: str):
-    cmd = f'tmux send-keys -t demo "bash ~/projects/colors/src/theme_demo.sh \\"{theme}\\"" C-m'
+def run_demo_in_ghostty(theme: str, nvim_theme: str):
+    cmd = f'tmux send-keys -t demo "bash ~/projects/colors/src/theme_demo.sh \\"{theme}\\" \\"{nvim_theme}\\"" C-m'
     # cmd = (
     #     f'tmux send-keys -t demo:0.0 "bash ~/projects/theme_demo.sh \\"{theme}\\"" C-m'
     # )
@@ -220,34 +217,68 @@ def resize_ghostty(width=1000, height=1500):
     subprocess.run(["osascript", "-e", script])
 
 
-def cycle_themes(theme_list, outdir: str, delay=1.0):
+def cycle_themes(theme_dict, outdir: str, delay=1.0):
     outdir = Path(outdir)
     outdir.mkdir(parents=True, exist_ok=True)
-    for theme in theme_list:
-        ensure_tmux_demo()
-        print("=== Theme:", theme)
-        write_theme(theme)
-        reload_ghostty()
-        # wait for UI to settle (rendering, window appear)
-        time.sleep(delay + 0.5)
-        # run_command_in_ghostty(f'bash ~/projects/colors/src/theme_demo.sh "{theme}"')
-        # run_command_in_ghostty("l ~/projects/colors/src/")
-        resize_ghostty()
-        time.sleep(delay + 0.1)
-        run_demo_in_ghostty(theme)
-        time.sleep(delay + 0.5)
-        tname = theme.replace(" ", "_").replace("/", "_")
-        screenshot_ghostty(Path("../data/interim/screenshots") / f"{tname}.png")
-        # take_screenshot(theme, outdir)
-        time.sleep(delay + 0.5)
+    for iterm_theme in theme_dict:
+        for nvim_theme in theme_dict[iterm_theme]:
+            ensure_tmux_demo(nvim_theme)
+            print("=== Theme:", iterm_theme)
+            write_theme(iterm_theme)
+            reload_ghostty()
+            # wait for UI to settle (rendering, window appear)
+            time.sleep(delay + 0.5)
+            # run_command_in_ghostty(f'bash ~/projects/colors/src/theme_demo.sh "{theme}"')
+            # run_command_in_ghostty("l ~/projects/colors/src/")
+            resize_ghostty()
+            time.sleep(delay + 0.1)
+            run_demo_in_ghostty(iterm_theme, nvim_theme)
+            time.sleep(delay + 0.5)
+            tname = iterm_theme.replace(" ", "_").replace("/", "_")
+            n_name = nvim_theme.replace(" ", "_").replace("/", "_")
+            screenshot_ghostty(
+                Path("../data/interim/screenshots") / f"{tname}__{n_name}.png"
+            )
+            time.sleep(delay + 0.5)
+
+
+def init_d():
+    return defaultdict(dict)
 
 
 if __name__ == "__main__":
-    my_themes = [
-        "Catppuccin Mocha",
-        "Tomorrow Night Blue",
-        "Everblush",
-        "Snazzy Soft",
-        # ... 48 more
-    ]
-    cycle_themes(my_themes, outdir="../data/interim/screenshots", delay=2.0)
+    cols = ["nvim_name", "colorscheme_name"]
+    inside_nvim_names = pd.read_csv(Path("../data/end/theme_list.csv"))[cols]
+    theme_file = Path("../data/end/top50_filtered.tsv")
+    df = pd.read_csv(theme_file, sep="\t")
+    iterm_to_nvim = defaultdict(init_d)
+    crit = df.apply(
+        lambda row: (
+            row["iterm_name"] == "One Half Light" and row["nvim_name"] == "onehalf"
+        )
+        or (row["iterm_name"] == "One Half Dark" and row["nvim_name"] == "onehalf")
+        or (row["iterm_name"] == "Snazzy_Soft" and row["nvim_name"] == "camila")
+        or (row["iterm_name"] == "Rose_Pine_Moon" and row["nvim_name"] == "sakura")
+        or (
+            row["iterm_name"] == "TokyoNight_Storm" and row["nvim_name"] == "kyotonight"
+        )
+        or (row["iterm_name"] == "TokyoNight" and row["nvim_name"] == "kyotonight"),
+        axis=1,
+    )
+    df = df[~crit]
+    df = df.head(10)
+    df = df.merge(
+        inside_nvim_names,
+        how="left",
+    )
+    for _, row in df.iterrows():
+        iterm_to_nvim[row["iterm_name"]][row["colorscheme_name"]] = row["nvim_url"]
+
+    # my_themes = [
+    #     "Catppuccin Mocha",
+    #     "Tomorrow Night Blue",
+    #     "Everblush",
+    #     "Snazzy Soft",
+    #     # ... 48 more
+    # ]
+    cycle_themes(iterm_to_nvim, outdir="../data/interim/screenshots", delay=2.0)

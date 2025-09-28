@@ -1,12 +1,41 @@
 #!/usr/bin/env bash
 
-theme_name="${1:-TEST THEME}"
+i_theme_name="${1:-TEST THEME}"
+n_theme_name="${2:-TEST THEME}"
 
 clear
 
+# === Neovim Theme Title with Color Bar ===
 echo
 echo "========================================="
-printf " iTerm Theme Demo for: \033[1m%s\033[0m\n" "$theme_name"
+printf " Neovim Theme Demo for: \033[1m%s\033[0m\n" "$n_theme_name"
+# Print a color bar under the title
+for i in {1..6}; do
+    printf "\e[48;5;$((30+i))m   \e[0m"
+done
+echo
+echo "========================================="
+
+# === iTerm Theme Title with Color Bar ===
+echo
+echo "========================================="
+printf " iTerm Theme Demo for: \033[1m%s\033[0m\n" "$i_theme_name"
+# Print a color bar under the title
+for i in {1..6}; do
+    printf "\e[48;5;$((100+i*2))m   \e[0m"
+done
+echo
+echo "========================================="
+
+echo
+echo "=^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^="
+printf " Neovim Theme Demo for: \033[1m%s\033[0m\n" "$n_theme_name"
+echo "========================================="
+echo
+
+echo
+echo "========================================="
+printf " iTerm Theme Demo for: \033[1m%s\033[0m\n" "$i_theme_name"
 echo "========================================="
 echo
 
@@ -21,16 +50,6 @@ for i in {0..15}; do
     printf "\e[48;5;${i}m%3s\e[0m " $i
 done
 echo
-
-# === 256 Color Palette ===
-echo
-echo "=== 256 Colors ==="
-for i in {0..255}; do
-    printf "\e[48;5;${i}m%3s\e[0m " $i
-    if (( ($i + 1) % 16 == 0 )); then
-        echo
-    fi
-done
 
 # === Truecolor Gradient ===
 echo
