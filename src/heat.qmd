@@ -1,0 +1,174 @@
+---
+title: "Untitled"
+format: html
+editor: visual
+---
+
+```{r}
+require(tidyverse)
+require(pheatmap)
+require(gt)
+require(scales)
+```
+
+```{r, fig.height=35, fig.width=20}
+af <- '../data/end/comparison_results.tsv'
+
+# Summarize to unique pairs and pivot
+mat <- read_tsv(af, show_col_types = FALSE) |>
+  select(iterm_name, nvim_name, similarity_index_lab) |>
+  group_by(iterm_name, nvim_name) |>
+  summarise(similarity_index_lab = max(similarity_index_lab), .groups = "drop") |>
+  pivot_wider(names_from = nvim_name, values_from = similarity_index_lab) %>%
+  as.data.frame()
+
+rownames(mat) <- mat$iterm_name
+mat$iterm_name <- NULL
+mat <- as.matrix(mat)
+
+# ---- Column annotation (mean similarity per Neovim theme) ----
+col_means <- colMeans(mat, na.rm = TRUE)
+annotation_col <- data.frame(
+  mean_similarity = col_means
+)
+rownames(annotation_col) <- colnames(mat)
+
+# Define annotation color scale
+ann_colors <- list(
+  mean_similarity = colorRampPalette(c("red", "yellow", "darkgreen"))(100)
+)
+
+# Plot heatmap with annotation
+pheatmap(
+  mat,
+  cluster_rows = TRUE,
+  cluster_cols = TRUE,
+  scale = "none",
+  main = "Similarity Index (higher = better)",
+  color = colorRampPalette(c("red", "yellow", "darkgreen"))(100),
+  fontsize_row = 6,
+  fontsize_col = 6,
+  annotation_col = annotation_col,
+  annotation_colors = ann_colors
+)
+```
+
+```{r, fig.height=15}
+af <- "../data/end/comparison_results.tsv"
+dat <- read_tsv(af, show_col_types = FALSE)
+
+# collapse duplicates (if any) by taking max similarity
+pair_dat <- dat %>%
+  group_by(iterm_name, nvim_name) %>%
+  summarise(sim = max(similarity_index_lab, na.rm = TRUE), .groups = "drop")
+
+# summaries
+nvim_summary <- pair_dat %>%
+  group_by(nvim_name) %>%
+  summarise(mean_sim = mean(sim, na.rm = TRUE), .groups = "drop") %>%
+  arrange(mean_sim)
+
+iterm_summary <- pair_dat %>%
+  group_by(iterm_name) %>%
+  summarise(mean_sim = mean(sim, na.rm = TRUE), .groups = "drop") %>%
+  arrange(mean_sim)
+
+best_pairs  <- pair_dat %>% arrange(desc(sim)) %>% head(20)
+worst_pairs <- pair_dat %>% arrange(sim) %>% head(10)
+
+# ---- helper to color numeric column 0..1 ----
+colorize <- function(gt_obj, col) {
+  gt_obj %>%
+    fmt_number(all_of(col), decimals = 3) %>%
+    data_color(
+      columns = all_of(col),
+      colors = col_numeric(c("red","yellow","darkgreen"), domain = c(0,1))
+    )
+}
+
+# ---- pretty tables ----
+bottom10_nvim <- nvim_summary %>% head(10) %>%
+  gt() %>%
+  tab_header(title = md("**Bottom 10 Neovim Themes (mean similarity)**")) %>%
+  cols_label(nvim_name = "Neovim Theme", mean_sim = "Mean Similarity") %>%
+  colorize("mean_sim")
+
+top10_nvim <- nvim_summary %>% tail(10) %>%
+  arrange( desc(mean_sim) ) |>
+  gt() %>%
+  tab_header(title = md("**Most Compatible Neovim Themes (mean similarity)**")) %>%
+  cols_label(nvim_name = "Neovim Theme", mean_sim = "Mean Similarity") %>%
+  colorize("mean_sim")
+
+bottom10_iterm <- iterm_summary %>% head(10) %>%
+  gt() %>%
+  tab_header(title = md("**Bottom 10 iTerm Themes (mean similarity)**")) %>%
+  cols_label(iterm_name = "iTerm Theme", mean_sim = "Mean Similarity") %>%
+  colorize("mean_sim")
+
+top10_iterm <- iterm_summary %>% tail(10) %>%
+  arrange( desc(mean_sim) ) |>
+  gt() %>%
+  tab_header(title = md("**Most Compatible iTerm Themes (mean similarity)**")) %>%
+  cols_label(iterm_name = "iTerm Theme", mean_sim = "Mean Similarity") %>%
+  colorize("mean_sim")
+
+best_pairs_tbl <- best_pairs %>%
+  gt() %>%
+  tab_header(title = md("**Top 20 Best Matches (Neovim ↔ iTerm)**")) %>%
+  cols_label(iterm_name = "iTerm Theme", nvim_name = "Neovim Theme", sim = "Similarity") %>%
+  colorize("sim")
+
+worst_pairs_tbl <- worst_pairs %>%
+  gt() %>%
+  tab_header(title = md("**Top 10 Worst Matches (Neovim ↔ iTerm)**")) %>%
+  cols_label(iterm_name = "iTerm Theme", nvim_name = "Neovim Theme", sim = "Similarity") %>%
+  colorize("sim")
+
+top10_nvim
+top10_iterm
+
+bottom10_nvim
+bottom10_iterm
+
+#best_pairs_tbl
+#worst_pairs_tbl
+```
+
+```{r}
+af <- "../data/end/top50_filtered.tsv"
+dat <- read_tsv(af, show_col_types = FALSE)
+
+tab <- dat %>%
+  arrange(desc(similarity_index_lab)) %>%
+  mutate(
+    similarity_index_lab = round(similarity_index_lab, 3),
+    nvim_url = ifelse(!is.na(nvim_url),
+                      paste0("[link](", nvim_url, ")"),
+                      NA)
+  ) %>%
+  gt() %>%
+  tab_header(
+    title = md("**Top 50 Non-Obvious Matches (iTerm ↔ Neovim)**")
+  ) %>%
+  cols_label(
+    iterm_name = "iTerm Theme",
+    nvim_name = "Neovim Theme",
+    nvim_url  = "Neovim Repo",
+    similarity_index_lab = "Similarity"
+  ) %>%
+  fmt_number(
+    columns = similarity_index_lab,
+    decimals = 3
+  ) %>%
+  text_transform(
+    locations = cells_body(columns = nvim_url),
+    fn = function(x) lapply(x, md)
+  ) %>%
+  tab_options(
+    table.font.size = px(12),
+    heading.align = "left"
+  )
+
+tab
+```
