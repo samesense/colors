@@ -25,7 +25,21 @@ def ensure_tmux_demo():
 
     # Now top is pane .0, bottom is pane .1
     # Launch nvim in the top pane
-    subprocess.run(["tmux", "send-keys", "-t", "demo:.1", "nvim", "C-m"], env=env)
+    # subprocess.run(["tmux", "send-keys", "-t", "demo:.1", "nvim", "C-m"], env=env)
+
+    theme = "rusty"
+    demo_file = "~/projects/colors/src/shot.py"
+    subprocess.run(
+        [
+            "tmux",
+            "send-keys",
+            "-t",
+            "demo:.1",
+            f"NVIM_THEME='{theme}' nvim {demo_file}",
+            "C-m",
+        ],
+        env=env,
+    )
 
 
 def write_theme(new_theme: str):
