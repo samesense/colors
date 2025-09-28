@@ -233,6 +233,20 @@ def resize_ghostty(width=1080, height=1920):
     subprocess.run(["osascript", "-e", script])
 
 
+def run_final_message():
+    """Print final figlet+lolcat message in the demo session."""
+    subprocess.run("tmux resize-pane -Z -t demo.2", shell=True, check=True)
+    cmd = (
+        "tmux send-keys -t demo.2 "
+        "'clear && "
+        'printf "\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n" && '
+        'figlet -c -f big "Like for 10 more combo recs" | lolcat\' C-m'
+    )
+    # cmd = "tmux send-keys -t demo.2 'clear && figlet -c -f big \"Like for 10 more combo recs\" | lolcat' C-m"
+    subprocess.run(cmd, shell=True, check=True)
+    print("🎉 Printed final combo message")
+
+
 def cycle_themes(theme_dict, outdir: str, delay=1.0):
     outdir = Path(outdir)
     outdir.mkdir(parents=True, exist_ok=True)
@@ -257,6 +271,10 @@ def cycle_themes(theme_dict, outdir: str, delay=1.0):
                 Path("../data/interim/screenshots") / f"{tname}__{n_name}.png"
             )
             time.sleep(delay + 0.5)
+        break
+    run_final_message()
+    time.sleep(2)
+    screenshot_ghostty(Path("../data/interim/screenshots") / "zz.png")
 
 
 def init_d():
