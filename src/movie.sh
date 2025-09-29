@@ -34,6 +34,7 @@ indir_abs=$(cd "$indir"; pwd)
 
   echo "file '$indir_abs/zz.png'"
   echo "duration 3"
+  echo "file '$indir_abs/zz.png'"
 } > "$tmpfile"
 
 ffmpeg -y -f concat -safe 0 -i "$tmpfile" \
@@ -41,4 +42,6 @@ ffmpeg -y -f concat -safe 0 -i "$tmpfile" \
   -vf "scale=1080:1920:force_original_aspect_ratio=decrease,pad=1080:1920:(ow-iw)/2:(oh-ih)/2" \
   "$outfile"
 
-echo "🎬 Video created at $outfile"
+ffmpeg -i "$outfile" \
+  -i ../data/end/song.mp3 \
+  -c:v copy -c:a aac -shortest ../data/end/video_with_music.mp4

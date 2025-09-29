@@ -1,6 +1,7 @@
 import os
 import sys
 
+from pyfiglet import Figlet
 from rich.align import Align
 from rich.console import Console
 from rich.layout import Layout
@@ -8,6 +9,19 @@ from rich.panel import Panel
 from rich.text import Text
 
 console = Console()
+
+
+# def theme_panel(label: str, theme: str, color: str) -> Panel:
+#     """Panel showing the theme name as a pyfiglet banner."""
+#     fig = Figlet(font="short")  # ✅ Try other fonts: 'standard', 'block', 'doom', etc.
+#     ascii_banner = fig.renderText(theme)
+#     text = Text(ascii_banner, style=f"bold {color}")
+#     return Panel(
+#         Align.center(text, vertical="middle"),
+#         title=label,
+#         border_style=color,
+#         padding=(1, 2),
+#     )
 
 
 def theme_panel(label: str, theme: str, color: str) -> Panel:
