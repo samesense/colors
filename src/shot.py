@@ -307,7 +307,7 @@ def cycle_themes(theme_dict, outdir: str, delay=1.0):
             ensure_tmux_demo(nvim_theme)
             print("=== Theme:", iterm_theme)
             write_theme(iterm_theme)
-            set_ghostty_font(size=30)
+            set_ghostty_font(size=32)
             reload_ghostty("demo")
             # wait for UI to settle (rendering, window appear)
             time.sleep(delay + 0.5)
@@ -323,7 +323,7 @@ def cycle_themes(theme_dict, outdir: str, delay=1.0):
                 Path("../data/interim/screenshots") / f"{tname}__{n_name}.png"
             )
             time.sleep(delay + 0.5)
-    set_ghostty_font(size=24)
+    set_ghostty_font(size=22)
     time.sleep(0.1)
     run_final_message()
     time.sleep(2)

@@ -1,5 +1,6 @@
 import os
 import sys
+import textwrap
 
 from pyfiglet import Figlet
 from rich.align import Align
@@ -11,33 +12,24 @@ from rich.text import Text
 console = Console()
 
 
-# def theme_panel(label: str, theme: str, color: str) -> Panel:
-#     """Panel showing the theme name as a pyfiglet banner."""
-#     fig = Figlet(font="short")  # ✅ Try other fonts: 'standard', 'block', 'doom', etc.
-#     ascii_banner = fig.renderText(theme)
-#     text = Text(ascii_banner, style=f"bold {color}")
-#     return Panel(
-#         Align.center(text, vertical="middle"),
-#         title=label,
-#         border_style=color,
-#         padding=(1, 2),
-#     )
-
-
 def theme_panel(label: str, theme: str, color: str) -> Panel:
-    """Panel showing the theme name with a labeled title."""
-    # Remove excessive spacing between characters
-    theme_big = " ".join(theme.upper())  # single space only
-    text = Text(
-        theme_big,
-        justify="center",
-        style=f"bold {color}",
+    """
+    Render the theme name in a Panel, word-wrapping at ~20 characters
+    without breaking words.
+    """
+    # Wrap at word boundaries; do NOT break long words or hyphenated parts
+    wrapped = textwrap.fill(
+        theme.upper(), width=20, break_long_words=False, break_on_hyphens=False
     )
+
+    # Create a Rich Text object that allows wrapping
+    text = Text(wrapped, style=f"bold {color}", justify="center", no_wrap=False)
+
     return Panel(
         Align.center(text, vertical="middle"),
         title=label,
         border_style=color,
-        padding=(1, 2),  # less padding so text fits better
+        padding=(1, 2),
     )
 
 
