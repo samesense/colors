@@ -292,7 +292,6 @@ def run_final_message():
     send_keys_cmd = f"tmux send-keys -t intro.1 {shlex.quote(full_cmd)} C-m"
 
     subprocess.run(send_keys_cmd, shell=True, check=True)
-
     print("🎉 Printed final combo message")
 
 

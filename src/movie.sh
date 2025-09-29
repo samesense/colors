@@ -45,3 +45,5 @@ ffmpeg -y -f concat -safe 0 -i "$tmpfile" \
 ffmpeg -i "$outfile" \
   -i ../data/end/song.mp3 \
   -c:v copy -c:a aac -shortest ../data/end/video_with_music.mp4
+=======
+echo "🎬 Video created at $outfile"

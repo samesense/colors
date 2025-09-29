@@ -3,6 +3,7 @@ import sys
 import textwrap
 
 from pyfiglet import Figlet
+
 from rich.align import Align
 from rich.console import Console
 from rich.layout import Layout
