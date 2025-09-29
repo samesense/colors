@@ -46,7 +46,7 @@ def ensure_tmux_demo(nvim_theme):
             "send-keys",
             "-t",
             "demo:.1",
-            f"NVIM_THEME='{nvim_theme}' nvim {demo_file}",
+            f"NVIM_THEME='{nvim_theme}' nvim +20 {demo_file}",
             "C-m",
         ],
         env=env,
@@ -274,28 +274,39 @@ def run_intro_message(delay=2.0):
 
 def run_final_message():
     """Print final figlet+lolcat message in the demo session."""
-    subprocess.run("tmux resize-pane -Z -t demo.2", shell=True, check=True)
-    cmd = (
-        "tmux send-keys -t demo.2 "
-        "'clear && "
-        'printf "\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n" && '
-        'figlet -c -f big "Like for 10 more theme combo recs" \' C-m'
+    env = dict(**os.environ)
+    env.pop("TMUX", None)  # avoid nesting issues
+
+    # Kill any existing session
+    subprocess.run("tmux kill-session -t intro 2>/dev/null", shell=True, env=env)
+    subprocess.run(["tmux", "new-session", "-d", "-s", "intro"], env=env)
+    reload_ghostty("intro")
+    time.sleep(1.0)
+
+    full_cmd = (
+        "sh -c \"clear && printf '\\n\\n\\n\\n\\n\\n\\n\\n\\n\\n' && "
+        'figlet -c -f big \\"Like for 10 more theme combo recs\\""'
     )
-    # cmd = "tmux send-keys -t demo.2 'clear && figlet -c -f big \"Like for 10 more combo recs\" | lolcat' C-m"
-    subprocess.run(cmd, shell=True, check=True)
+
+    # tmux types this whole string and presses enter
+    send_keys_cmd = f"tmux send-keys -t intro.1 {shlex.quote(full_cmd)} C-m"
+
+    subprocess.run(send_keys_cmd, shell=True, check=True)
     print("🎉 Printed final combo message")
 
 
 def cycle_themes(theme_dict, outdir: str, delay=1.0):
     outdir = Path(outdir)
     outdir.mkdir(parents=True, exist_ok=True)
+    set_ghostty_font(size=20)
+    time.sleep(0.1)
     run_intro_message()
     for iterm_theme in theme_dict:
         for nvim_theme in theme_dict[iterm_theme]:
             ensure_tmux_demo(nvim_theme)
             print("=== Theme:", iterm_theme)
             write_theme(iterm_theme)
-            set_ghostty_font(size=20)
+            set_ghostty_font(size=32)
             reload_ghostty("demo")
             # wait for UI to settle (rendering, window appear)
             time.sleep(delay + 0.5)
@@ -311,6 +322,8 @@ def cycle_themes(theme_dict, outdir: str, delay=1.0):
                 Path("../data/interim/screenshots") / f"{tname}__{n_name}.png"
             )
             time.sleep(delay + 0.5)
+    set_ghostty_font(size=22)
+    time.sleep(0.1)
     run_final_message()
     time.sleep(2)
     screenshot_ghostty(Path("../data/interim/screenshots") / "zz.png")
